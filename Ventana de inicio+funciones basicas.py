@@ -5,6 +5,10 @@ import time
 # STRANGERTEC — Ventana principal del juego
 
 #Variables para las funciones, son globales
+
+#Variable de la palabra al azar elegida por el sistema
+palabra_sistema = ""   #Palabra que el sistema eligio empieza en nada
+
 # Variables para capturar el morse del jugador 1
 tiempo_presion    = 0       #cuando se presionó espacio, empieza en cero
 codigo_actual     = ""      #Es lo que va escribiendo el usuario, empiza vacio
@@ -22,6 +26,9 @@ puntos1  = 0    #Score jugador 1
 puntos2  = 0    #Score jugador 1
 ronda_actual = 1     #Ronda actual
 rondas_max   = 3     #Rondas maximas
+
+#Variable de desempate
+id_timer = None   #Tiempo disminuido en el desempate
 
 #Funciones utilizadas
 def elegir_palabra_al_azar():
@@ -200,7 +207,7 @@ def capturar_morse_j1(ventana, label_resultado, label_estado, palabra_sistema):
         if codigo_actual != "":
             lista_codigos.append(codigo_actual)  #Se une las letras en una lista, ya que la funcion de morse a texto solo lee listas tipo ["1111","0101"]
 
-        palabra_usuario = binario_a_texto(lista_codigos, 0)
+        palabra_usuario = binario_a_texto(lista_codigos, 0)  #Palabra final del usuario evaluada en texto
 
         #Cuando se termina la palabra se muestra que ya ha finalizado el jugador 1
         label_estado.config(text="Jugador 1 listo, esperando Jugador 2...")
@@ -349,7 +356,7 @@ def mostrar_pantalla_reglas(nombre1, nombre2):
         "Interpreta el mensaje en Morse y repítelo correctamente.",
         "",
         "•  Pulso corto  =  Punto  (.)",
-        "•  Pulso largo  =  Raya  (-)",
+        "•  Pulso largo  =  Raya  (_)",
         "•  Gana quien tenga más aciertos y mejor precisión.",
         "•  Respeta ritmo y espacios para evitar errores.",
         "•  Recuerda: Simbolo=0,2s, Letra=0,6s, Finalizar Palabra=1,4s.",
@@ -407,32 +414,28 @@ def mostrar_pantalla_juego(nombre1, nombre2, puntos1, puntos2):
     for widget in ventana.winfo_children():  #Escanear elementos de la pantalla anterior
         widget.destroy() #Eliminarlos
 
-    # Elegimos palabra al azar con la funcion definida con una variable
-    palabra = elegir_palabra_al_azar()
+    global palabra_sistema # Se importa la variable de palabra del sistema
+    #Se modifica la variable
+    palabra_sistema = elegir_palabra_al_azar()
 
     #Se mantienen la puntuacion
     frame_jugadores = tk.Frame(ventana, bg=COLOR_FONDO)
     frame_jugadores.place(x=20, y=15)
 
-    tk.Label(frame_jugadores, text="JUGADOR 1", bg=COLOR_FONDO,
-             fg=COLOR_GRIS, font=FUENTE_PEQUENA).grid(row=0, column=0, sticky="w")
-    tk.Label(frame_jugadores, text=nombre1, bg=COLOR_FONDO,
-             fg=COLOR_BLANCO, font=("Courier", 13)).grid(row=1, column=0, sticky="w")
-    tk.Label(frame_jugadores, text=f"PTS: {puntos1}", bg=COLOR_FONDO,
-             fg=COLOR_ROJO, font=FUENTE_PEQUENA).grid(row=2, column=0, sticky="w", pady=(0, 10))
+    #Texto de la puntuacion de los jugadores
+    tk.Label(frame_jugadores, text="JUGADOR 1", bg=COLOR_FONDO,fg=COLOR_GRIS, font=FUENTE_PEQUENA).grid(row=0, column=0, sticky="w")
+    tk.Label(frame_jugadores, text=nombre1, bg=COLOR_FONDO,fg=COLOR_BLANCO, font=("Courier", 13)).grid(row=1, column=0, sticky="w")
+    tk.Label(frame_jugadores, text=f"PTS: {puntos1}", bg=COLOR_FONDO,fg=COLOR_ROJO, font=FUENTE_PEQUENA).grid(row=2, column=0, sticky="w", pady=(0, 10))
 
-    tk.Label(frame_jugadores, text="JUGADOR 2", bg=COLOR_FONDO,
-             fg=COLOR_GRIS, font=FUENTE_PEQUENA).grid(row=3, column=0, sticky="w")
-    tk.Label(frame_jugadores, text=nombre2, bg=COLOR_FONDO,
-             fg=COLOR_BLANCO, font=("Courier", 13)).grid(row=4, column=0, sticky="w")
-    tk.Label(frame_jugadores, text=f"PTS: {puntos2}", bg=COLOR_FONDO,
-             fg=COLOR_ROJO, font=FUENTE_PEQUENA).grid(row=5, column=0, sticky="w")
+    tk.Label(frame_jugadores, text="JUGADOR 2", bg=COLOR_FONDO, fg=COLOR_GRIS, font=FUENTE_PEQUENA).grid(row=3, column=0, sticky="w")
+    tk.Label(frame_jugadores, text=nombre2, bg=COLOR_FONDO, fg=COLOR_BLANCO, font=("Courier", 13)).grid(row=4, column=0, sticky="w")
+    tk.Label(frame_jugadores, text=f"PTS: {puntos2}", bg=COLOR_FONDO,fg=COLOR_ROJO, font=FUENTE_PEQUENA).grid(row=5, column=0, sticky="w")
 
     # Texto que indica la palabra que eligio el sistema 
     tk.Label(ventana,text="PALABRA A DESCIFRAR",bg=COLOR_FONDO,fg=COLOR_GRIS, font=FUENTE_PEQUENA).place(relx=0.5, rely=0.35, anchor="center")
-    tk.Label(ventana, text=palabra, bg=COLOR_FONDO,fg=COLOR_ROJO,font=("Courier", 32, "bold")).place(relx=0.5, rely=0.45, anchor="center")
+    tk.Label(ventana, text=palabra_sistema, bg=COLOR_FONDO,fg=COLOR_ROJO,font=("Courier", 32, "bold")).place(relx=0.5, rely=0.45, anchor="center")
 
-    # Mensaje que sale en la esquina inferiopr derecha donde ponen los controles
+    # Mensaje que sale en la esquina inferior derecha donde ponen los controles
     frame_controles = tk.Frame(ventana, bg=COLOR_FONDO)
     frame_controles.place(relx=0.98, rely=0.95, anchor="se")
 
@@ -445,27 +448,15 @@ def mostrar_pantalla_juego(nombre1, nombre2, puntos1, puntos2):
     
     
     # Label donde se ve el morse en tiempo real
-    label_resultado = tk.Label(
-        ventana,
-        text="Morse: ",
-        bg=COLOR_FONDO,
-        fg=COLOR_BLANCO,
-        font=FUENTE_LABEL
-    )
+    label_resultado = tk.Label(ventana,text="Morse: ",bg=COLOR_FONDO,fg=COLOR_BLANCO,font=FUENTE_LABEL)
     label_resultado.place(relx=0.5, rely=0.65, anchor="center")
 
     # Label de estado (jugador listo o no)
-    label_estado = tk.Label(
-        ventana,
-        text="",
-        bg=COLOR_FONDO,
-        fg=COLOR_GRIS,
-        font=FUENTE_PEQUENA
-    )
+    label_estado = tk.Label(ventana,text="",bg=COLOR_FONDO,fg=COLOR_GRIS,font=FUENTE_PEQUENA)
     label_estado.place(relx=0.5, rely=0.75, anchor="center")
 
-    # Arrancamos la captura del jugador 1
-    capturar_morse_j1(ventana, label_resultado, label_estado, palabra)
+    #Se arranca la función de deteccion del morse del jugador 1
+    capturar_morse_j1(ventana, label_resultado, label_estado, palabra_sistema)
 
 #PANTALLA 5 - Calcular y mover score
 def mostrar_pantalla_resultados(nombre1, nombre2, palabra_sistema, palabra_j1, palabra_j2):
@@ -530,16 +521,92 @@ def mostrar_pantalla_resultados(nombre1, nombre2, palabra_sistema, palabra_j1, p
 
         # Verificamos si ya se jugaron todas las rondas
         if ronda_actual >= rondas_max:
-            # Aquí irá la pantalla de ganador o empate (próximo paso)
-            print("fin del juego")
-            return
-        else:
+            if puntos1 == puntos2:  #Si los puntos son iguales se envia a la pantalla de desempate
+                mostrar_pantalla_desempate(nombre1, nombre2)
+            else: #si no son iguales se envia a la pantalla de ganador
+                mostrar_pantalla_ganador(nombre1, nombre2)
+        else: # si no se jugaron todas las rondas se suma uno a la ronta y se continua
             ronda_actual = ronda_actual + 1
             mostrar_pantalla_juego(nombre1, nombre2, puntos1, puntos2)
     
     #Boton para continuar la partida
     tk.Button(ventana, text="CONTINUAR  →", bg=COLOR_FONDO,fg=COLOR_ROJO,font=FUENTE_BOTON,relief=tk.FLAT,
         bd=0,activebackground=COLOR_ROJO_TENUE,activeforeground=COLOR_BLANCO,cursor="hand2",command=al_continuar).pack(pady=30)
+
+#PANTALLA 5.2 - Desempate
+def mostrar_pantalla_desempate(nombre1, nombre2):
+    for widget in ventana.winfo_children():  #Escanear objetos de la pantalla
+        widget.destroy()  #Eliminarlos
+
+    # Título y subtitulos de la pantalla
+    tk.Label(ventana,text="¡EMPATE!",bg=COLOR_FONDO,fg=COLOR_ROJO,font=("Courier", 36, "bold")).pack(pady=(80, 10))
+
+    tk.Label(ventana,text="ninguno pudo definirlo...",bg=COLOR_FONDO,fg=COLOR_GRIS,font=("Courier", 11)).pack()
+
+    tk.Label(ventana,text="SE VIENE LA RONDA EXTRA",bg=COLOR_FONDO,fg=COLOR_BLANCO,font=("Courier", 14, "bold")).pack(pady=(30, 50))
+
+    #Texto con el puntaje actual
+    tk.Label(ventana,text=f"{nombre1}  {puntos1}  —  {puntos2}  {nombre2}",bg=COLOR_FONDO,fg=COLOR_GRIS,font=("Courier", 12)).pack()
+
+    #Botón y funcion de ronda extra
+    def al_continuar():
+        global ronda_actual, rondas_max, tiempo_ronda_extra  #Se importan variables
+        rondas_extra = ronda_actual - rondas_max + 1  # cuántas extras llevamos
+        #Se calcula el tiempo según la ronda extra
+        tiempo_ronda_extra = max(5, 15 - ((rondas_extra - 1) * 3))
+
+        #Se suma 1 a la ronda actual y a la ronda extra
+        rondas_max   = rondas_max + 1
+        ronda_actual = ronda_actual + 1
+        mostrar_pantalla_juego(nombre1, nombre2, puntos1, puntos2)  #Activa la pantalla del juego con las rondas extras
+
+    #Ajustes del boton ronda extra
+    tk.Button(ventana,text="JUGAR RONDA EXTRA  →",bg=COLOR_FONDO,fg=COLOR_ROJO,font=FUENTE_BOTON,relief=tk.FLAT,bd=0,activebackground=COLOR_ROJO_TENUE,
+        activeforeground=COLOR_BLANCO,cursor="hand2",command=al_continuar).pack(pady=30)
+    
+    #Boton para aceptar empate, menos llamativo que el de ronda extra
+    tk.Button(ventana,text="ACEPTAR EMPATE",bg=COLOR_FONDO,fg=COLOR_GRIS,font=FUENTE_PEQUENA,relief=tk.FLAT,bd=0,activebackground=COLOR_ROJO_TENUE,
+        activeforeground=COLOR_BLANCO,cursor="hand2",command=lambda: mostrar_pantalla_ganador(nombre1, nombre2)).pack(pady=(0, 10))
+
+#PANTALLA 6 - GANADOR
+def mostrar_pantalla_ganador(nombre1, nombre2):
+    for widget in ventana.winfo_children(): #Analizar objetos en la pantalla anterior
+        widget.destroy() #Eliminar objetos
+
+    #determinacion del ganador final, comparacion de puntos
+    if puntos1 > puntos2:
+        ganador = nombre1
+        perdedor = nombre2
+    elif puntos2 > puntos1:
+        ganador = nombre2
+        perdedor = nombre1
+    else:
+        ganador = "EMPATE"
+
+    # Título y subtitulos de la pantalla
+    if ganador == "EMPATE":
+        tk.Label(ventana, text="— EMPATE FINAL —", bg=COLOR_FONDO,fg=COLOR_GRIS, font=("Courier", 28, "bold")).pack(pady=(80, 10))
+        tk.Label(ventana, text="ninguno pudo con el otro...", bg=COLOR_FONDO,fg=COLOR_GRIS, font=("Courier", 11)).pack()
+    else:
+        tk.Label(ventana, text="¡GANADOR!", bg=COLOR_FONDO,fg=COLOR_GRIS, font=("Courier", 14)).pack(pady=(60, 5))
+        tk.Label(ventana, text=ganador, bg=COLOR_FONDO, fg=COLOR_ROJO, font=("Courier", 48, "bold")).pack()
+        tk.Label(ventana, text=f"derrota a {perdedor}", bg=COLOR_FONDO,fg=COLOR_GRIS, font=("Courier", 11)).pack(pady=(5, 0))
+
+    #Texto que indica los puntos obtenidos al final
+    tk.Label(ventana,text=f"{nombre1}  {puntos1}  —  {puntos2}  {nombre2}",bg=COLOR_FONDO,fg=COLOR_BLANCO,font=("Courier", 14)).pack(pady=30)
+
+    #Botón jugar de nuevo 
+    def jugar_de_nuevo():
+        global puntos1, puntos2, ronda_actual, rondas_max  #Importa variables y las reinicia
+        puntos1      = 0
+        puntos2      = 0
+        ronda_actual = 1
+        rondas_max   = 3
+        mostrar_pantalla_inicio()
+
+    #Ajustes del botón
+    tk.Button(ventana,text="JUGAR DE NUEVO  →",bg=COLOR_FONDO,fg=COLOR_ROJO,font=FUENTE_BOTON,relief=tk.FLAT,bd=0,activebackground=COLOR_ROJO_TENUE,activeforeground=COLOR_BLANCO,
+        cursor="hand2",command=jugar_de_nuevo).pack(pady=20)
 
 # VENTANA PRINCIPAL
 ventana = tk.Tk()
