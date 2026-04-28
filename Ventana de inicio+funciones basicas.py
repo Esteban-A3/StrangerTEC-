@@ -1,22 +1,34 @@
 import tkinter as tk
 from tkinter import Toplevel
 import random
+import time
 # STRANGERTEC — Ventana principal del juego
 
-#Variables para las funciones
+#Variables para las funciones, son globales
 # Variables para capturar el morse del jugador 1
-tiempo_presion    = 0       # cuando se presionó espacio
-codigo_actual     = ""      # los 1s y 0s de la letra actual
+tiempo_presion    = 0       #cuando se presionó espacio, empieza en cero
+codigo_actual     = ""      #Es lo que va escribiendo el usuario, empiza vacio
 lista_codigos     = []      # lista de letras en binario
-id_letra          = None    # id del after para separar letra
-id_palabra        = None    # id del after para fin de palabra
-j1_listo          = False   # si jugador 1 ya terminó
+id_letra          = None    #Identificar si se escribio una letra
+id_palabra        = None    #Identificar el fin de la palabra
+j1_listo          = False   #Variable para saber si el jugador 1 termino
+
+#Variables de los nombres
+nombre1 = ""
+nombre2 = ""
+
+#Variables del marcador
+puntos1  = 0    #Score jugador 1
+puntos2  = 0    #Score jugador 1
+ronda_actual = 1     #Ronda actual
+rondas_max   = 3     #Rondas maximas
 
 #Funciones utilizadas
 def elegir_palabra_al_azar():
     palabras = ["SOS", "HELP", "HEY", "HI", "HOLA", "BYE", "OK", "YES", "NO", "CODE"]
     return random.choice(palabras)
 
+#Funcion que traduce el morse expresado como binario a texto
 def binario_a_texto(codigos, indice):
 
     if indice == len(codigos):    #Se compara para poder terminar la funcion ya que si el indice es igual a su largo significa que ya leeyo el codigo
@@ -104,8 +116,28 @@ def binario_a_texto(codigos, indice):
         letra = "?"         #Por si se ingresa una secuencia no Valorada
     return letra + binario_a_texto(codigos, indice + 1)   #Recursividad sinple una ves valorada la variable letra, se agrega y se vuelve a repetir la funcion
 
+#Funcion que cuenta los errores
+def contar_errores(palabra_original, palabra_usuario, indice):
+    # caso base: si el indice llega al final
+    if indice == len(palabra_original) or indice == len(palabra_usuario):
+        # Esta resta es para comprobar si la palabra escrita por el usuario es del mismo tamaño, si lo es pone 0, sino agrega la diferencia como un errores
+        return abs(len(palabra_original) - len(palabra_usuario))
+    
+    if palabra_original[indice] != palabra_usuario[indice]:  #Si en la posicion determinada por el indice es diferente
+        return 1 + contar_errores(palabra_original, palabra_usuario, indice + 1)
+    else:   #Recursividad simple, suma uno al indice para poder escanear las posiciones de las palabras
+        return contar_errores(palabra_original, palabra_usuario, indice + 1)
 
-#Funcion para determinar que ha escrito el usuario que juega en la computadora 
+#Función que obtiene el porcentaje de errores
+def calcular_porcentaje(palabra_original, errores):
+    largo = len(palabra_original)   #Calcula el largo
+    aciertos = largo - errores      #Resta el largo con los errores encontrados con la otra funcion
+    aciertos = max(0, aciertos) #si es negativo lo fuerza a 0 
+    porcentaje = (aciertos * 100) / largo  #Realiza aritmetica basica para obtener el porcentaje
+    return porcentaje
+
+
+#Funcion para determinar que ha escrito el usuario que juega en la computadora   -----AVISO SE NECESITA CAMBIO JUGADOR 2
 def capturar_morse_j1(ventana, label_resultado, label_estado, palabra_sistema):
     global tiempo_presion, codigo_actual, lista_codigos
     global id_letra, id_palabra, j1_listo
@@ -120,31 +152,26 @@ def capturar_morse_j1(ventana, label_resultado, label_estado, palabra_sistema):
         global tiempo_presion, id_letra, id_palabra
 
         # Cancela los timers de separación porque el usuario sigue escribiendo
-        if id_letra:
-            ventana.after_cancel(id_letra)
-        if id_palabra:
-            ventana.after_cancel(id_palabra)
+        if id_letra:       #contador para saber si han pasado los 0,6s que tiene que esperar para finalizar la letra
+            ventana.after_cancel(id_letra)  #Reinicia el contador
+        if id_palabra:     #contador para saber si han a pasado los 1,4ss que tiene que esperar para finalizar la palabra
+            ventana.after_cancel(id_palabra) #Reinicia el contador
 
         # Guardamos el momento en que se presionó
-        tiempo_presion = ventana.winfo_fpixels('1i')  # truco para obtener tiempo
-        import time
-        tiempo_presion = time.time()
+        tiempo_presion = time.time() #Se inicia el tiempo
 
     def al_soltar(evento):
         global tiempo_presion, codigo_actual, lista_codigos
         global id_letra, id_palabra
-        import time
         
-        
-
-        # Calculamos cuánto duró la presión
+        # Calculamos cuánto duró la presión, con el tiempo actual-tiempo de inicio
         duracion = time.time() - tiempo_presion
 
-        # Punto o raya según duración
-        if duracion < 0.2:
-            codigo_actual = codigo_actual + "1"   # punto
+        #Se va calculando la letra, recordar que el morse esta traducido en binario
+        if duracion < 0.2: #Tiempo para que termine el simbolo(punto o espacio)
+            codigo_actual = codigo_actual + "1"   # agregar 1
         else:
-            codigo_actual = codigo_actual + "0"   # raya
+            codigo_actual = codigo_actual + "0"   # agregar 0
 
         # Timer para separar letra (0.6s sin tocar)
         id_letra = ventana.after(600, separar_letra)
@@ -153,41 +180,45 @@ def capturar_morse_j1(ventana, label_resultado, label_estado, palabra_sistema):
         id_palabra = ventana.after(1400, terminar_palabra)
 
         # Mostramos punto o raya según lo que escribió, lo que hace es escribir texto
-        if duracion < 0.2:
-            label_resultado.config(text=label_resultado.cget("text") + ".")
+        if duracion < 0.2:   #Indica que escribio simbolo(punto o espacio)
+            label_resultado.config(text=label_resultado.cget("text") + ".")   #Texto inficando punto en tiempo real
         else:
-            label_resultado.config(text=label_resultado.cget("text") + "_")
+            label_resultado.config(text=label_resultado.cget("text") + "_")    #Texto indicando espacio en tiempo real
 
     def separar_letra():
         global codigo_actual, lista_codigos
         if codigo_actual != "":
-            lista_codigos.append(codigo_actual)
+            lista_codigos.append(codigo_actual)   #Se une las letras en una lista, ya que la funcion de morse a texto solo lee listas tipo ["1111","0101"]
             codigo_actual = ""
              # Espacio visual para separar letras
-            label_resultado.config(text=label_resultado.cget("text") + " ")
+            label_resultado.config(text=label_resultado.cget("text") + " ")    #Texto indicando espacio en tiempo real
 
     def terminar_palabra():
         global lista_codigos, j1_listo
 
         # Por si quedó una letra sin guardar
         if codigo_actual != "":
-            lista_codigos.append(codigo_actual)
+            lista_codigos.append(codigo_actual)  #Se une las letras en una lista, ya que la funcion de morse a texto solo lee listas tipo ["1111","0101"]
 
         palabra_usuario = binario_a_texto(lista_codigos, 0)
 
-        # Solo mostramos el mensaje de espera, sin revelar la palabra
+        #Cuando se termina la palabra se muestra que ya ha finalizado el jugador 1
         label_estado.config(text="Jugador 1 listo, esperando Jugador 2...")
         j1_listo = True
-        ventana.unbind("<KeyPress-space>")
+
+        #Son eventos que suceden en la pantalla y que tkinter registra
+        ventana.unbind("<KeyPress-space>")     
         ventana.unbind("<KeyRelease-space>")
 
-        # Desvinculamos el espacio para que no siga capturando
+        # Desvinculamos el espacio para que no siga capturando cuando el jugador 1 ha terminadop
         ventana.unbind("<space>")
 
-    # Vinculamos presión y soltura de la barra espaciadora
+        #Se simula que el jugador 2 termino, es temporal hasta que la logica este terminada
+        mostrar_pantalla_resultados(nombre1, nombre2, palabra_sistema, palabra_usuario, palabra_sistema)
+
+    # Vinculamos los eventos de presión y soltura de la barra espaciadora al iniciar la funcion
     ventana.bind("<KeyPress-space>",   al_presionar)
     ventana.bind("<KeyRelease-space>", al_soltar)
-
 
 
 # Colores de la ventana pricipal(inspirado en Stranger Things)
@@ -246,6 +277,7 @@ def mostrar_pantalla_inicio():
 
 # PANTALLA 2 — Ingreso de nombres
 def mostrar_pantalla_nombres():
+
     global id_parpadeo   #Se trae la variable parpadeo a la funcion
     # Cancelamos el parpadeo antes de destruir los widgets
     if id_parpadeo:
@@ -288,7 +320,8 @@ def mostrar_pantalla_nombres():
 
     #Botón de continuar
     def al_continuar():
-        nombre1 = entrada_j1.get().strip().upper()
+        global nombre1,nombre2  #Se traen los nombres para modificarlos globalmente
+        nombre1 = entrada_j1.get().strip().upper()  #Esto es configuracion de lectura: hace lee lo que se puso, elimina espacios y hace todo en mayuscula
         nombre2 = entrada_j2.get().strip().upper()
 
         # Validación básica por si no se escribio nada en los campos del nombre
@@ -366,11 +399,11 @@ def mostrar_pantalla_lobby(nombre1, nombre2):
     tk.Label(frame_centro,text="LISTOS PARA EL DESAFÍO", bg=COLOR_FONDO,fg=COLOR_GRIS,font=("Courier", 10, "bold")).pack(pady=(0, 30))
 
     boton_iniciar = tk.Button(frame_centro,text="  INICIAR JUEGO  ",bg=COLOR_ROJO,fg=COLOR_BLANCO,font=FUENTE_BOTON,relief=tk.FLAT,bd=0,
-        activebackground=COLOR_ROJO_TENUE,activeforeground=COLOR_BLANCO,cursor="hand2", command=lambda: mostrar_pantalla_juego(nombre1, nombre2))  # Aquí se conectará la lógica del juego
+        activebackground=COLOR_ROJO_TENUE,activeforeground=COLOR_BLANCO,cursor="hand2", command=lambda: mostrar_pantalla_juego(nombre1, nombre2, puntos1, puntos2))  # Aquí se conectará la lógica del juego
     boton_iniciar.pack()
 
-#PANTALLA 4 - Inicio del juego
-def mostrar_pantalla_juego(nombre1, nombre2, puntos1=0, puntos2=0):
+#PANTALLA 4 - Juego
+def mostrar_pantalla_juego(nombre1, nombre2, puntos1, puntos2):
     for widget in ventana.winfo_children():  #Escanear elementos de la pantalla anterior
         widget.destroy() #Eliminarlos
 
@@ -434,6 +467,79 @@ def mostrar_pantalla_juego(nombre1, nombre2, puntos1=0, puntos2=0):
     # Arrancamos la captura del jugador 1
     capturar_morse_j1(ventana, label_resultado, label_estado, palabra)
 
+#PANTALLA 5 - Calcular y mover score
+def mostrar_pantalla_resultados(nombre1, nombre2, palabra_sistema, palabra_j1, palabra_j2):
+    global puntos1, puntos2, ronda_actual    #Se importan las variables del score
+ 
+    for widget in ventana.winfo_children():  #Escanear objetos de la pantalla anterior
+        widget.destroy()  #Eliminar
+
+    # Calculamos errores y porcentaje de cada jugador
+    errores1     = contar_errores(palabra_sistema, palabra_j1, 0)
+    errores2     = contar_errores(palabra_sistema, palabra_j2, 0)
+    porcentaje1  = calcular_porcentaje(palabra_sistema, errores1)
+    porcentaje2  = calcular_porcentaje(palabra_sistema, errores2)
+
+    # Determinamos ganador de la ronda y sumamos punto a las variables globales
+    if porcentaje1 > porcentaje2:
+        ganador_ronda = nombre1
+        puntos1 = puntos1 + 1
+    elif porcentaje2 > porcentaje1:
+        ganador_ronda = nombre2
+        puntos2 = puntos2 + 1
+    else:
+        ganador_ronda = "EMPATE"
+    
+    #Texto de rondas restantes
+    rondas_restantes = rondas_max - ronda_actual   #Se modifica la variable de rondas
+    tk.Label(ventana,text=f"RONDA {ronda_actual} DE {rondas_max}  —  Rondas restantes: {rondas_restantes}",bg=COLOR_FONDO, fg=COLOR_GRIS,font=FUENTE_PEQUENA).pack(pady=(20, 0))
+
+    #Título de la ventana
+    tk.Label(ventana,text="RESULTADOS",bg=COLOR_FONDO,fg=COLOR_ROJO,font=("Courier", 22, "bold")).pack(pady=(10, 30))
+
+    #Frame con los porcentajes obtenidos por los usuarios
+    frame_resultados = tk.Frame(ventana, bg=COLOR_FONDO)
+    frame_resultados.pack()
+
+    #Texto porcentaje jugador 1
+    tk.Label(frame_resultados, text=nombre1, bg=COLOR_FONDO,fg=COLOR_GRIS, font=FUENTE_PEQUENA).grid(row=0, column=0, padx=60)
+    tk.Label(frame_resultados, text=f"{porcentaje1:.0f}%", bg=COLOR_FONDO,
+             fg=COLOR_BLANCO, font=("Courier", 42, "bold")).grid(row=1, column=0, padx=60)
+
+    #Separador para verse bello
+    tk.Label(frame_resultados, text="VS", bg=COLOR_FONDO,fg=COLOR_ROJO, font=("Courier", 18, "bold")).grid(row=1, column=1, padx=20)
+
+    #Texto porcentaje jugador 2
+    tk.Label(frame_resultados, text=nombre2, bg=COLOR_FONDO,fg=COLOR_GRIS, font=FUENTE_PEQUENA).grid(row=0, column=2, padx=60)
+    tk.Label(frame_resultados, text=f"{porcentaje2:.0f}%", bg=COLOR_FONDO,fg=COLOR_BLANCO, font=("Courier", 42, "bold")).grid(row=1, column=2, padx=60)
+
+    #Texto con el ganador de la ronda
+    if ganador_ronda == "EMPATE":
+        texto_ganador = "— RONDA EMPATADA —"
+    else:
+        texto_ganador = f"— {ganador_ronda} GANA LA RONDA —"  #Pone el nombre del jugador mas el texto indicado
+
+    tk.Label(ventana,text=texto_ganador, bg=COLOR_FONDO,fg=COLOR_ROJO,font=("Courier", 13, "bold")).pack(pady=20)
+
+    #Texto con el puntaje acumulado de los dos jugadores
+    tk.Label(ventana,text=f"{nombre1}  {puntos1}  —  {puntos2}  {nombre2}",bg=COLOR_FONDO,fg=COLOR_BLANCO,font=("Courier", 13)).pack()
+
+    # Botón continuar
+    def al_continuar():
+        global ronda_actual   #Importa variable de la ronda
+
+        # Verificamos si ya se jugaron todas las rondas
+        if ronda_actual >= rondas_max:
+            # Aquí irá la pantalla de ganador o empate (próximo paso)
+            print("fin del juego")
+            return
+        else:
+            ronda_actual = ronda_actual + 1
+            mostrar_pantalla_juego(nombre1, nombre2, puntos1, puntos2)
+    
+    #Boton para continuar la partida
+    tk.Button(ventana, text="CONTINUAR  →", bg=COLOR_FONDO,fg=COLOR_ROJO,font=FUENTE_BOTON,relief=tk.FLAT,
+        bd=0,activebackground=COLOR_ROJO_TENUE,activeforeground=COLOR_BLANCO,cursor="hand2",command=al_continuar).pack(pady=30)
 
 # VENTANA PRINCIPAL
 ventana = tk.Tk()
