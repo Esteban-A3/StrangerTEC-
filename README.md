@@ -95,9 +95,8 @@ Recursos visuales del proyecto:
 - Esteban Sánchez
 - Gerald Calderón
 
-
 # Estado del Proyecto
 En desarrollo académico – Proyecto I Semestre 2026.
 
 # 🚀 Notas
-Este repositorio funciona como respaldo, organización y control de versiones del proyecto completo, incluyendo código, documentación y planificación.
+Este repositorio funciona como respaldo,
