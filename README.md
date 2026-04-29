@@ -97,6 +97,3 @@ Recursos visuales del proyecto:
 
 # Estado del Proyecto
 En desarrollo académico – Proyecto I Semestre 2026.
-
-# 🚀 Notas
-Este repositorio funciona como respaldo,
